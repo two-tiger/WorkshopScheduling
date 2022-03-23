@@ -9,8 +9,9 @@
 from random import randint, choice
 from typing import List, Tuple, Set, Dict, Any
 from reshape_tool import reshape_data, WorkPiece
+from draw_gantt_chart import draw_gantt
 
-MATRIX_SIZE = 500
+SIZE = 10
 
 
 # 三层编码基因
@@ -39,12 +40,13 @@ class Gene(object):
 
 # 存储解码结果
 class GeneEvaluation():
-    def __init__(self):
+    def __init__(self, processNumber, machineNumber, orderNumber, workpieceNumber):
         self.fulfillTime = 0
-        self.machineWorkTime = [0 for _ in range(MATRIX_SIZE)]
-        self.processIds = [0 for _ in range(MATRIX_SIZE)]
-        self.endTime = [[0 for _ in range(MATRIX_SIZE)] for _ in range(MATRIX_SIZE)]
-        self.startTime = [[0 for _ in range(MATRIX_SIZE)] for _ in range(MATRIX_SIZE)]
+        self.processMachine = [0 for _ in range(processNumber)]
+        self.machineWorkTime = [0 for _ in range(machineNumber)]
+        self.processIds = [[0 for _ in range(SIZE)] for _ in range(orderNumber)]
+        self.endTime = [[0 for _ in range(SIZE)] for _ in range(workpieceNumber)]
+        self.startTime = [[0 for _ in range(SIZE)] for _ in range(workpieceNumber)]
 
 
 # # 生产计划树对象
@@ -80,14 +82,37 @@ class GeneticAlgorithm():
 
         self.genes: Set[Gene] = set()
 
-    # 评估基因
-    # 固定优化基因
+    # 评估基因长度
     def evaluate_gene(self, g: Gene) -> GeneEvaluation:
-        pass
+        processNumber = len(self.processList)
+        machineNumber = len(self.machineList)
+        orderNumber = len(self.orderList)
+        workpieceNumber = len(self.workpieceList)
+        evaluation = GeneEvaluation(processNumber,machineNumber,orderNumber,workpieceNumber)
+        for index, orderId in enumerate(g.first_layer):
+            workpieceOrder = g.second_layer[index]
+            workpieceId = self.orderWorkpiece[orderId][workpieceOrder].workpieceIndex
+            processOrder = evaluation.processIds[orderId][workpieceOrder]
+            processId = self.orderWorkpiece[orderId][workpieceOrder].process[processOrder]
+            machineOrder = g.third_layer[index]
+            machineId = self.orderWorkpiece[orderId][workpieceOrder].machine[processOrder][machineOrder]
+            evaluation.processMachine[processId] = machineId
+            time = self.orderWorkpiece[orderId][workpieceOrder].time[processOrder][machineOrder]
+            time *= self.orderWorkpiece[orderId][workpieceOrder].number
+            evaluation.processIds[orderId][workpieceOrder] += 1
+            if processOrder == 0:
+                evaluation.startTime[workpieceId][processOrder] = evaluation.machineWorkTime[machineId]
+            else:
+                evaluation.startTime[workpieceId][processOrder] = max(evaluation.endTime[workpieceId][processOrder - 1],
+                                                                      evaluation.machineWorkTime[machineId])
+            evaluation.machineWorkTime[machineId] = evaluation.startTime[workpieceId][processOrder] + time
+            evaluation.endTime[workpieceId][processOrder] = evaluation.machineWorkTime[machineId]
+            evaluation.fulfillTime = max(evaluation.fulfillTime, evaluation.machineWorkTime[machineId])
+        return evaluation
 
     # 计算适应度
     def calculate_fitness(self, g: Gene) -> float:
-        pass
+        return 1 / self.evaluate_gene(g).fulfillTime
 
     # 两个基因交叉
     def gene_cross(self, g1: Gene, g2: Gene) -> Gene:
@@ -108,19 +133,25 @@ class GeneticAlgorithm():
             thirdLayer = [-1] * processNumber
             for i in range(len(self.orderList)):
                 for j in range(len(self.orderWorkpiece[i])):
-                    for _ in range(len(self.orderWorkpiece[i][j].process)):
+                    for k in range(len(self.orderWorkpiece[i][j].process)):
                         val = choice(index_list)
                         index_list.remove(val)
                         firstLayer[val] = i
                         secondLayer[val] = j
-                        machineNumber = len(self.orderWorkpiece[i][j].machine)
-                        thirdLayer[val] = randint(0, machineNumber-1)
+            processCount = [[0 for _ in range(SIZE)] for _ in range(len(self.orderList))]
+            for i in range(processNumber):
+                order = firstLayer[i]
+                workpieceOrder = secondLayer[i]
+                processOrder = processCount[order][workpieceOrder]
+                machineNumber = len(self.orderWorkpiece[order][workpieceOrder].machine[processOrder])
+                thirdLayer[i] = randint(0, machineNumber - 1)
+                processCount[order][workpieceOrder] += 1
             g.length = processNumber
             g.first_layer = firstLayer
             g.second_layer = secondLayer
             g.third_layer = thirdLayer
-            # g.fitness =
-            g.print_gene()
+            g.fitness = self.calculate_fitness(g)
+            # g.print_gene()
             self.genes.add(g)
 
 
@@ -131,18 +162,47 @@ class GeneticAlgorithm():
         self.orderWorkpiece = parameter
         self.init_population()
 
+        # 交叉
+        # 变异
+
+        bestGene = Gene()
+        for gene in self.genes:
+            if bestGene.fitness < gene.fitness:
+                bestGene = gene
+
+        result = self.evaluate_gene(bestGene)
+
+        rowData = []
+        for i in range(len(self.orderList)):
+            for j in range(len(self.orderWorkpiece[i])):
+                for k in range(len(self.orderWorkpiece[i][j].process)):
+                    workpieceId = self.orderWorkpiece[i][j].workpieceIndex
+                    processId = self.orderWorkpiece[i][j].process[k]
+                    machineId = result.processMachine[processId]
+                    temp = {
+                        "order": self.orderList[i],
+                        "workpiece": self.workpieceList[workpieceId],
+                        "process": self.processList[processId],
+                        "machine": self.machineList[machineId],
+                        "startTime": result.startTime[workpieceId][k],
+                        "endTime": result.endTime[workpieceId][k]
+                    }
+                    rowData.append(temp)
+        return rowData
 
 if __name__ == "__main__":
     # 测试数据
-    test = [{'order':'#o-1','workpiece':'#w-1','number':'100','process':'#p-111','machine':['#m-1','#m-2'],'time':[65,70],'sequences':0},
-            {'order':'#o-1','workpiece':'#w-1','number':'100','process':'#p-112','machine':['#m-7'],'time':[40],'sequences':1},
-            {'order':'#o-1','workpiece':'#w-2','number':'10','process':'#p-121','machine':['#m-1','#m-2','#m-3'],'time':[30,40,35],'sequences':0},
-            {'order':'#o-1','workpiece':'#w-2','number':'10','process':'#p-122','machine':['#m-7'],'time':[30],'sequences':1},
-            {'order':'#o-2','workpiece':'#w-3','number':'100','process':'#p-231','machine':['#m-3','#m-4'],'time':[69,70],'sequences':0},
-            {'order':'#o-2','workpiece':'#w-3','number':'100','process':'#p-232','machine':['#m-8'],'time':[25],'sequences':1},
-            {'order':'#o-3','workpiece':'#w-4','number':'10','process':'#p-341','machine':['#m-4','#m-5'],'time':[145,140],'sequences':0},
-            {'order':'#o-3','workpiece':'#w-4','number':'10','process':'#p-342','machine':['#m-6'],'time':[10],'sequences':1},
-            {'order':'#o-3','workpiece':'#w-4','number':'10','process':'#p-343 ','machine':['#m-8'],'time':[17],'sequences':2}]
+    test = [{'order':'#o-1','workpiece':'#w-1','number':100,'process':'#p-111','machine':['#m-1','#m-2'],'time':[65,70],'sequences':0},
+            {'order':'#o-1','workpiece':'#w-1','number':100,'process':'#p-112','machine':['#m-7'],'time':[40],'sequences':1},
+            {'order':'#o-1','workpiece':'#w-2','number':10,'process':'#p-121','machine':['#m-1','#m-2','#m-3'],'time':[30,40,35],'sequences':0},
+            {'order':'#o-1','workpiece':'#w-2','number':10,'process':'#p-122','machine':['#m-7'],'time':[30],'sequences':1},
+            {'order':'#o-2','workpiece':'#w-3','number':100,'process':'#p-231','machine':['#m-3','#m-4'],'time':[69,70],'sequences':0},
+            {'order':'#o-2','workpiece':'#w-3','number':100,'process':'#p-232','machine':['#m-8'],'time':[25],'sequences':1},
+            {'order':'#o-3','workpiece':'#w-4','number':10,'process':'#p-341','machine':['#m-4','#m-5'],'time':[145,140],'sequences':0},
+            {'order':'#o-3','workpiece':'#w-4','number':10,'process':'#p-342','machine':['#m-6'],'time':[10],'sequences':1},
+            {'order':'#o-3','workpiece':'#w-4','number':10,'process':'#p-343 ','machine':['#m-8'],'time':[17],'sequences':2}]
     orderWorkpiece, orderList, workpieceList, processList, machineList = reshape_data(test)
     ga = GeneticAlgorithm(orderList, workpieceList, processList, machineList)
-    ga.exec(orderWorkpiece)
+    rowData = ga.exec(orderWorkpiece)
+    #print(rowData)
+    draw_gantt(rowData)

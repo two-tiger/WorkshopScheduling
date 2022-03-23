@@ -10,15 +10,15 @@
 from typing import (List, Dict)
 from collections import namedtuple
 
-test = [{'order':'#o-1','workpiece':'#w-1','number':'100','process':'#p-111','machine':['#m-1','#m-2'],'time':[65,70],'sequences':0},
-        {'order':'#o-1','workpiece':'#w-1','number':'100','process':'#p-112','machine':['#m-7'],'time':[40],'sequences':1},
-        {'order':'#o-1','workpiece':'#w-2','number':'10','process':'#p-121','machine':['#m-1','#m-2','#m-3'],'time':[30,40,35],'sequences':0},
-        {'order':'#o-1','workpiece':'#w-2','number':'10','process':'#p-122','machine':['#m-7'],'time':[30],'sequences':1},
-        {'order':'#o-2','workpiece':'#w-3','number':'100','process':'#p-231','machine':['#m-3','#m-4'],'time':[69,70],'sequences':0},
-        {'order':'#o-2','workpiece':'#w-3','number':'100','process':'#p-232','machine':['#m-8'],'time':[25],'sequences':1},
-        {'order':'#o-3','workpiece':'#w-4','number':'10','process':'#p-341','machine':['#m-4','#m-5'],'time':[145,140],'sequences':0},
-        {'order':'#o-3','workpiece':'#w-4','number':'10','process':'#p-342','machine':['#m-6'],'time':[10],'sequences':1},
-        {'order':'#o-3','workpiece':'#w-4','number':'10','process':'#p-343 ','machine':['#m-8'],'time':[17],'sequences':2}]
+test = [{'order':'#o-1','workpiece':'#w-1','number':100,'process':'#p-111','machine':['#m-1','#m-2'],'time':[65,70],'sequences':0},
+        {'order':'#o-1','workpiece':'#w-1','number':100,'process':'#p-112','machine':['#m-7'],'time':[40],'sequences':1},
+        {'order':'#o-1','workpiece':'#w-2','number':10,'process':'#p-121','machine':['#m-1','#m-2','#m-3'],'time':[30,40,35],'sequences':0},
+        {'order':'#o-1','workpiece':'#w-2','number':10,'process':'#p-122','machine':['#m-7'],'time':[30],'sequences':1},
+        {'order':'#o-2','workpiece':'#w-3','number':100,'process':'#p-231','machine':['#m-3','#m-4'],'time':[69,70],'sequences':0},
+        {'order':'#o-2','workpiece':'#w-3','number':100,'process':'#p-232','machine':['#m-8'],'time':[25],'sequences':1},
+        {'order':'#o-3','workpiece':'#w-4','number':10,'process':'#p-341','machine':['#m-4','#m-5'],'time':[145,140],'sequences':0},
+        {'order':'#o-3','workpiece':'#w-4','number':10,'process':'#p-342','machine':['#m-6'],'time':[10],'sequences':1},
+        {'order':'#o-3','workpiece':'#w-4','number':10,'process':'#p-343 ','machine':['#m-8'],'time':[17],'sequences':2}]
 
 class WorkPiece():
     def __init__(self, order, workpieceIndex, number, process, machine, time):
@@ -53,7 +53,7 @@ def reshape_data(data: List[Dict]):
     workpieceList = list(set(map(lambda v: v["workpiece"], data)))
     processList = list(set(map(lambda v: v["process"], data)))
     machineList = list(map(lambda v: v["machine"], data))
-    machineList = sum(machineList, [])
+    machineList = list(set(sum(machineList, [])))
     orderWorkpiece = [[] for _ in range(len(orderList))]
     for workpieceIndex, workpiece in enumerate(workpieceList):
         order, number, process, machineName, time = get_workpiece_info(data, workpiece)
@@ -69,4 +69,7 @@ def reshape_data(data: List[Dict]):
 
 if __name__ == '__main__':
     orderWorkpiece, orderList, workpieceList, processList, machineList = reshape_data(test)
-    print(orderWorkpiece[1][1].process)
+    print(processList)
+    print(orderWorkpiece[0][0].process)
+    print(machineList)
+    print(orderWorkpiece[0][0].machine)
