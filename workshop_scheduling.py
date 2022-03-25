@@ -77,8 +77,6 @@ class GeneticAlgorithm():
         self.machineList = machineList
 
         self.orderWorkpiece = None
-        self.orderProcess = None
-        self.orderMachine = None
 
         self.genes: Set[Gene] = set()
 
@@ -116,7 +114,8 @@ class GeneticAlgorithm():
 
     # 两个基因交叉
     def gene_cross(self, g1: Gene, g2: Gene) -> Gene:
-        pass
+        pos0 = randint(0, len(self.processList) - 1)
+
 
     # 基因变异
     def gene_mutation(self, g: Gene) -> None:
