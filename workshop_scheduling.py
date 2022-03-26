@@ -114,7 +114,52 @@ class GeneticAlgorithm():
 
     # 两个基因交叉
     def gene_cross(self, g1: Gene, g2: Gene) -> Gene:
-        pos0 = randint(0, len(self.processList) - 1)
+        chromosomeSize = len(self.processList)
+        orderNumber = len(self.orderList)
+        workpieceNumber = len(self.workpieceList)
+        pos1 = randint(0, chromosomeSize - 1)
+        pos2 = randint(0, chromosomeSize - 1)
+        start = min(pos1, pos2)
+        end = max(pos1, pos2)
+        secondLayerRecord = [[] for _ in range(orderNumber)]
+        for i in range(g1.length):
+            secondLayerRecord[g1.first_layer[i]].append(g1.second_layer[i])
+        thirdLayerRecord = {}
+        processCount = [[0 for _ in range(workpieceNumber)] for _ in range(orderNumber)]
+        for i in range(g1.length):
+            processOrder = processCount[g1.first_layer[i]][g1.second_layer[i]]
+            key = (g1.first_layer[i],g1.second_layer[i],processOrder)
+            thirdLayerRecord[key] = g1.third_layer[i]
+            processCount[g1.first_layer[i]][g1.second_layer[i]] += 1
+        prototype = g1.first_layer[start: end + 1]
+        t = g2.first_layer[0:]
+        for v in prototype:
+            for i in range(len(t)):
+                if v == t[i]:
+                    t.pop(i)
+                    break
+        firstLayer = t[0:start] + prototype + t[start:]
+        secondLayer = [-1] * chromosomeSize
+        thirdLayer = [-1] * chromosomeSize
+        orderCount = [0] * orderNumber
+        for i in range(chromosomeSize):
+            secondLayer[i] = secondLayerRecord[firstLayer[i]][orderCount[firstLayer[i]]]
+            orderCount[firstLayer[i]] += 1
+        processCountNew = [[0 for _ in range(workpieceNumber)] for _ in range(orderNumber)]
+        for i in range(chromosomeSize):
+            processOrderNew = processCountNew[firstLayer[i]][secondLayer[i]]
+            indexTuple = (firstLayer[i], secondLayer[i], processOrderNew)
+            thirdLayer[i] = thirdLayerRecord[indexTuple]
+            processCountNew[firstLayer[i]][secondLayer[i]] += 1
+        child = Gene()
+        child.length = g1.length
+        child.first_layer = firstLayer
+        child.second_layer = secondLayer
+        child.third_layer = thirdLayer
+        child.print_gene()
+        # child.fitness = self.calculate_fitness(child)
+        # child.print_gene()
+        return child
 
 
     # 基因变异
@@ -189,6 +234,22 @@ class GeneticAlgorithm():
                     rowData.append(temp)
         return rowData, result
 
+    def test(self, parameter: List[List[WorkPiece]]):
+        self.orderWorkpiece = parameter
+        self.init_population()
+        gene1 = Gene()
+        gene2 = Gene()
+        for gene in self.genes:
+            if gene1.fitness < gene.fitness:
+                gene2 = gene1
+                gene1 = gene
+        gene1.print_gene()
+        gene2.print_gene()
+        child1 = Gene()
+        child2 = Gene()
+        child1 = self.gene_cross(gene1, gene2)
+        child2 = self.gene_cross(gene2, gene1)
+
 if __name__ == "__main__":
     # 测试数据
     test = [{'order':'#o-1','workpiece':'#w-1','number':10000,'process':'#p-111','machine':['#m-1','#m-2','#m-3','#m-4','#m-5'],'time':[300,300,300,280,280]},
@@ -213,7 +274,8 @@ if __name__ == "__main__":
             {'order':'#o-3','workpiece':'#w-7','number':12000,'process':'#p-372 ','machine':['#m-7','#m-8','#m-9','#m-10'],'time':[40,40,40,40]}]
     orderWorkpiece, orderList, workpieceList, processList, machineList = reshape_data(test)
     ga = GeneticAlgorithm(orderList, workpieceList, processList, machineList)
-    rowData, bestGene = ga.exec(orderWorkpiece)
-    #print(rowData)
-    print(bestGene.fulfillTime)
-    draw_gantt(rowData)
+    # rowData, bestGene = ga.exec(orderWorkpiece)
+    # print(rowData)
+    ga.test(orderWorkpiece)
+    # print(bestGene.fulfillTime)
+    # draw_gantt(rowData)
