@@ -6,7 +6,7 @@
 @file: workshop_scheduling.py
 @time: 2022-03-08 13:59
 """
-from random import randint, choice
+from random import randint, choice, random
 from typing import List, Tuple, Set, Dict, Any
 from reshape_tool import reshape_data, WorkPiece
 from draw_gantt_chart import draw_gantt
@@ -198,21 +198,38 @@ class GeneticAlgorithm():
             # g.print_gene()
             self.genes.add(g)
 
+    # 选择个体， 轮盘赌法
+    def select_gene(self, k) -> List[Gene]:
+        genes = sorted(self.genes, key=lambda x: x.fitness)
+        sumFitness = sum(g.fitness for g in genes)
+        chosen = []
+        for i in range(k):
+            u = random() * sumFitness
+            sum_ = 0
+            for gene in genes:
+                sum_ += gene.fitness
+                if sum_ >= u:
+                    chosen.append(gene)
+                    break
+        chosen = sorted(chosen, key=lambda x: x.fitness, reverse=True)
+        return chosen
 
-    def select_gene(self) -> Gene:
-        pass
+    def select_best(self) -> Gene:
+        genes = sorted(self.genes, key=lambda x: x.fitness, reverse=True)
+        return genes[0]
 
     def exec(self, parameter: List[List[WorkPiece]]):
         self.orderWorkpiece = parameter
         self.init_population()
 
-        # 交叉
-        # 变异
+        for generate in range(self.times):
+            print("############### Generation {} ###############".format(generate))
+            retainNumber = int(self.populationNumber * 0.8)
+            optNumber = self.populationNumber - retainNumber
+            newGenes = self.select_gene(retainNumber)
 
-        bestGene = Gene()
-        for gene in self.genes:
-            if bestGene.fitness < gene.fitness:
-                bestGene = gene
+
+        bestGene = self.select_best()
 
         result = self.evaluate_gene(bestGene)
 
