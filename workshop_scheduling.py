@@ -8,6 +8,7 @@
 """
 from random import randint, choice, random
 from typing import List, Tuple, Set, Dict, Any
+import matplotlib.pyplot as plt
 from reshape_tool import reshape_data, WorkPiece
 from draw_gantt_chart import draw_gantt
 
@@ -64,7 +65,7 @@ class GeneEvaluation():
 
 
 class GeneticAlgorithm():
-    def __init__(self, orderList, workpieceList, processList, machineList, populationNumber=50, times=20, crossProbability=0.95,
+    def __init__(self, orderList, workpieceList, processList, machineList, populationNumber=50, times=100, crossProbability=0.95,
                  mutationProbability=0.05):
         self.populationNumber = populationNumber  # 种群数量
         self.times = times  # 遗传代数
@@ -78,7 +79,7 @@ class GeneticAlgorithm():
 
         self.orderWorkpiece = None
 
-        self.genes: Set[Gene] = set()
+        self.genes: List[Gene] = []
 
     # 评估基因长度
     def evaluate_gene(self, g: Gene) -> GeneEvaluation:
@@ -156,7 +157,7 @@ class GeneticAlgorithm():
         child.first_layer = firstLayer
         child.second_layer = secondLayer
         child.third_layer = thirdLayer
-        child.print_gene()
+        # child.print_gene()
         # child.fitness = self.calculate_fitness(child)
         # child.print_gene()
         return child
@@ -196,7 +197,7 @@ class GeneticAlgorithm():
             g.third_layer = thirdLayer
             g.fitness = self.calculate_fitness(g)
             # g.print_gene()
-            self.genes.add(g)
+            self.genes.append(g)
 
     # 选择个体， 轮盘赌法
     def select_gene(self, k) -> List[Gene]:
@@ -211,7 +212,6 @@ class GeneticAlgorithm():
                 if sum_ >= u:
                     chosen.append(gene)
                     break
-        chosen = sorted(chosen, key=lambda x: x.fitness, reverse=True)
         return chosen
 
     def select_best(self) -> Gene:
@@ -222,14 +222,34 @@ class GeneticAlgorithm():
         self.orderWorkpiece = parameter
         self.init_population()
 
+        fitnessList = [self.select_best().fitness]
+        bestGene = Gene()
+        print("------ Start of evolution ------")
         for generate in range(self.times):
             print("############### Generation {} ###############".format(generate))
+            genes = sorted(self.genes, key=lambda x: x.fitness, reverse=True)
             retainNumber = int(self.populationNumber * 0.8)
             optNumber = self.populationNumber - retainNumber
-            newGenes = self.select_gene(retainNumber)
+            newGenes : list = self.genes[0:retainNumber]
+            count = 0
+            while count <= optNumber: # 通过交叉补全种群
+                chosen = self.select_gene(2)
+                if random() < self.crossProbability:
+                    crossGene = self.gene_cross(chosen[0],chosen[1])
+                    newGenes.append(crossGene)
+                    count += 1
+            for gene in newGenes: # 变异
+                if random() < self.mutationProbability:
+                    self.gene_mutation(gene)
+            self.genes = newGenes
 
+            generateBest = self.select_best()
+            fitnessList.append(generateBest.fitness)
+            if generateBest.fitness > bestGene.fitness:
+                bestGene = generateBest
+            print("Max fitness of current generate: {}".format(generateBest.fitness))
 
-        bestGene = self.select_best()
+        print("------ End of evolution ------")
 
         result = self.evaluate_gene(bestGene)
 
@@ -249,7 +269,7 @@ class GeneticAlgorithm():
                         "endTime": result.endTime[workpieceId][k]
                     }
                     rowData.append(temp)
-        return rowData, result
+        return rowData, result, fitnessList
 
     def test(self, parameter: List[List[WorkPiece]]):
         self.orderWorkpiece = parameter
@@ -280,19 +300,20 @@ if __name__ == "__main__":
             {'order':'#o-2','workpiece':'#w-4','number':1000,'process':'#p-242','machine':['#m-6','#m-7','#m-9'],'time':[40,40,40]},
             {'order':'#o-2','workpiece':'#w-5','number':10000,'process':'#p-251','machine':['#m-1','#m-2','#m-3','#m-4'],'time':[184,184,180,184]},
             {'order':'#o-2','workpiece':'#w-5','number':10000,'process':'#p-252','machine':['#m-6','#m-8','#m-9'],'time':[40,40,40]},
-            {'order':'#o-2','workpiece':'#w-6','number':100000,'process':'#p-261','machine':['#m-4','#m-5'],'time':[140,140]},
-            {'order':'#o-2','workpiece':'#w-6','number':100000,'process':'#p-262','machine':['#m-7','#m-8','#m-9'],'time':[20,20,20]},
+            {'order':'#o-2','workpiece':'#w-6','number':10000,'process':'#p-261','machine':['#m-4','#m-5'],'time':[140,140]},
+            {'order':'#o-2','workpiece':'#w-6','number':10000,'process':'#p-262','machine':['#m-7','#m-8','#m-9'],'time':[20,20,20]},
             {'order':'#o-3','workpiece':'#w-1','number':8000,'process':'#p-311','machine':['#m-1','#m-2','#m-3','#m-4','#m-5'],'time':[300,300,300,280,280]},
             {'order':'#o-3','workpiece':'#w-1','number':8000,'process':'#p-312','machine':['#m-6','#m-7','#m-8','#m-9'],'time':[40,40,40,40]},
             {'order':'#o-3','workpiece':'#w-3','number':10000,'process':'#p-331','machine':['#m-1','#m-2','#m-3','#m-5'],'time':[340,340,350,350]},
             {'order':'#o-3','workpiece':'#w-3','number':10000,'process':'#p-332','machine':['#m-6','#m-7','#m-8','#m-9'],'time':[40,38,40,38]},
             {'order':'#o-3','workpiece':'#w-3','number':10000,'process':'#p-333','machine':['#m-10'],'time':[20]},
-            {'order':'#o-3','workpiece':'#w-7','number':12000,'process':'#p-371 ','machine':['#m-3','#m-4','#m-5'],'time':[660,660,660]},
-            {'order':'#o-3','workpiece':'#w-7','number':12000,'process':'#p-372 ','machine':['#m-7','#m-8','#m-9','#m-10'],'time':[40,40,40,40]}]
+            {'order':'#o-3','workpiece':'#w-7','number':1200,'process':'#p-371 ','machine':['#m-3','#m-4','#m-5'],'time':[660,660,660]},
+            {'order':'#o-3','workpiece':'#w-7','number':1200,'process':'#p-372 ','machine':['#m-7','#m-8','#m-9','#m-10'],'time':[40,40,40,40]}]
     orderWorkpiece, orderList, workpieceList, processList, machineList = reshape_data(test)
     ga = GeneticAlgorithm(orderList, workpieceList, processList, machineList)
-    # rowData, bestGene = ga.exec(orderWorkpiece)
-    # print(rowData)
-    ga.test(orderWorkpiece)
-    # print(bestGene.fulfillTime)
-    # draw_gantt(rowData)
+    rowData, bestGene, fitnessList = ga.exec(orderWorkpiece)
+    x = [i for i in range(len(fitnessList))]
+    plt.plot(x, fitnessList)
+    plt.show()
+    print(bestGene.fulfillTime)
+    draw_gantt(rowData)
