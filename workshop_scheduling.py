@@ -65,7 +65,7 @@ class GeneEvaluation():
 
 
 class GeneticAlgorithm():
-    def __init__(self, orderList, workpieceList, processList, machineList, populationNumber=50, times=100, crossProbability=0.95,
+    def __init__(self, orderList, workpieceList, processList, machineList, populationNumber=50, times=200, crossProbability=0.95,
                  mutationProbability=0.05):
         self.populationNumber = populationNumber  # 种群数量
         self.times = times  # 遗传代数
@@ -162,10 +162,44 @@ class GeneticAlgorithm():
         # child.print_gene()
         return child
 
-
     # 基因变异
     def gene_mutation(self, g: Gene) -> None:
-        pass
+        chromosomeSize = g.length
+        orderNumber = len(self.orderList)
+        workpieceNumber = len(self.workpieceList)
+        thirdLayerRecord = {}
+        processCount = [[0 for _ in range(workpieceNumber)] for _ in range(orderNumber)]
+        for i in range(chromosomeSize):
+            processOrder = processCount[g.first_layer[i]][g.second_layer[i]]
+            key = (g.first_layer[i],g.second_layer[i],processOrder)
+            thirdLayerRecord[key] = g.third_layer[i]
+            processCount[g.first_layer[i]][g.second_layer[i]] += 1
+        pos1 = randint(0, chromosomeSize - 1)
+        pos2 = randint(0, chromosomeSize - 1)
+        g.first_layer[pos1], g.first_layer[pos2] = g.first_layer[pos2], g.first_layer[pos1]
+        g.second_layer[pos1], g.second_layer[pos2] = g.second_layer[pos2], g.second_layer[pos1]
+        g.third_layer[pos1], g.third_layer[pos2] = g.third_layer[pos2], g.third_layer[pos1]
+        processCountNew = [[0 for _ in range(workpieceNumber)] for _ in range(orderNumber)]
+        for i in range(chromosomeSize):
+            processOrderNew = processCountNew[g.first_layer[i]][g.second_layer[i]]
+            if i == pos1:
+                processMachine = self.orderWorkpiece[g.first_layer[i]][g.second_layer[i]].machine[processOrderNew]
+                processTime = self.orderWorkpiece[g.first_layer[i]][g.second_layer[i]].time[processOrderNew]
+                machineProbability = [1/i for i in processTime]
+                sumProbability = sum(machineProbability)
+                indexDict = {}
+                for j, probability in enumerate(machineProbability):
+                    indexDict[j] = probability
+                u = random() * sumProbability
+                sum_ = 0
+                for k in range(len(machineProbability)):
+                    sum_ += indexDict[k]
+                    if sum_ >= u:
+                        g.third_layer[i] = k
+                        break
+            indexTuple = (g.first_layer[i], g.second_layer[i], processOrderNew)
+            g.third_layer[i] = thirdLayerRecord[indexTuple]
+            processCountNew[g.first_layer[i]][g.second_layer[i]] += 1
 
     # 初始化种群
     def init_population(self) -> None:
@@ -235,9 +269,11 @@ class GeneticAlgorithm():
             while count <= optNumber: # 通过交叉补全种群
                 chosen = self.select_gene(2)
                 if random() < self.crossProbability:
-                    crossGene = self.gene_cross(chosen[0],chosen[1])
-                    newGenes.append(crossGene)
-                    count += 1
+                    crossGene1 = self.gene_cross(chosen[0],chosen[1])
+                    crossGene2 = self.gene_cross(chosen[1],chosen[0])
+                    newGenes.append(crossGene1)
+                    newGenes.append(crossGene2)
+                    count += 2
             for gene in newGenes: # 变异
                 if random() < self.mutationProbability:
                     self.gene_mutation(gene)

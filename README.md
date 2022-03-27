@@ -30,7 +30,6 @@ test = [{'order':'#o-1','workpiece':'#w-1','number':100,'process':'#p-111','mach
         {'order':'#o-3','workpiece':'#w-4','number':10,'process':'#p-343 ','machine':['#m-8'],'time':[17]}]
 ```
 
-
 ## 项目框架
 
 - [X]  reshaping data
@@ -39,8 +38,8 @@ test = [{'order':'#o-1','workpiece':'#w-1','number':100,'process':'#p-111','mach
   - [X]  Initializing the population
   - [X]  Evaluating genes
   - [X]  Calculating fitness
-  - [ ]  Cross
-  - [ ]  Mutation
+  - [X]  Cross
+  - [X]  Mutation
   - [ ]  Selecting gene
 - [ ]  Add transfer batch
 - [ ]  Add workpiece switching time
