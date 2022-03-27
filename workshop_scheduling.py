@@ -45,23 +45,8 @@ class GeneEvaluation():
         self.fulfillTime = 0
         self.processMachine = [0 for _ in range(processNumber)]
         self.machineWorkTime = [0 for _ in range(machineNumber)]
-        self.processIds = [[0 for _ in range(SIZE)] for _ in range(orderNumber)]
-        self.endTime = [[0 for _ in range(SIZE)] for _ in range(workpieceNumber)]
-        self.startTime = [[0 for _ in range(SIZE)] for _ in range(workpieceNumber)]
-
-
-# # 生产计划树对象
-# class ProductionPlanningTree():
-#     def __init__(self, rootObj):
-#         self.key = rootObj
-#         self.leftChild = None
-#         self.rightChild = None
-#
-#     def generate_order_matrix(self):
-#         pass
-#
-#     def generate_gene(self, orderMatrix):
-#         pass
+        self.startTime = [[[0 for _ in range(processNumber)] for _ in range(workpieceNumber)] for _ in range(orderNumber)]
+        self.endTime = [[[0 for _ in range(processNumber)] for _ in range(workpieceNumber)] for _ in range(orderNumber)]
 
 
 class GeneticAlgorithm():
@@ -88,24 +73,23 @@ class GeneticAlgorithm():
         orderNumber = len(self.orderList)
         workpieceNumber = len(self.workpieceList)
         evaluation = GeneEvaluation(processNumber,machineNumber,orderNumber,workpieceNumber)
-        for index, orderId in enumerate(g.first_layer):
-            workpieceOrder = g.second_layer[index]
-            workpieceId = self.orderWorkpiece[orderId][workpieceOrder].workpieceIndex
-            processOrder = evaluation.processIds[orderId][workpieceOrder]
-            processId = self.orderWorkpiece[orderId][workpieceOrder].process[processOrder]
-            machineOrder = g.third_layer[index]
-            machineId = self.orderWorkpiece[orderId][workpieceOrder].machine[processOrder][machineOrder]
+        processCount = [[0 for _ in range(workpieceNumber)] for _ in range(orderNumber)]
+        for i in range(g.length):
+            processOrder = processCount[g.first_layer[i]][g.second_layer[i]]
+            processId = self.orderWorkpiece[g.first_layer[i]][g.second_layer[i]].process[processOrder]
+            machineId = self.orderWorkpiece[g.first_layer[i]][g.second_layer[i]].machine[processOrder][g.third_layer[i]]
             evaluation.processMachine[processId] = machineId
-            time = self.orderWorkpiece[orderId][workpieceOrder].time[processOrder][machineOrder]
-            time *= self.orderWorkpiece[orderId][workpieceOrder].number
-            evaluation.processIds[orderId][workpieceOrder] += 1
+            time = self.orderWorkpiece[g.first_layer[i]][g.second_layer[i]].time[processOrder][g.third_layer[i]]
+            time *= self.orderWorkpiece[g.first_layer[i]][g.second_layer[i]].number
+            processCount[g.first_layer[i]][g.second_layer[i]] += 1
             if processOrder == 0:
-                evaluation.startTime[workpieceId][processOrder] = evaluation.machineWorkTime[machineId]
+                evaluation.startTime[g.first_layer[i]][g.second_layer[i]][processOrder] = evaluation.machineWorkTime[machineId]
             else:
-                evaluation.startTime[workpieceId][processOrder] = max(evaluation.endTime[workpieceId][processOrder - 1],
-                                                                      evaluation.machineWorkTime[machineId])
-            evaluation.machineWorkTime[machineId] = evaluation.startTime[workpieceId][processOrder] + time
-            evaluation.endTime[workpieceId][processOrder] = evaluation.machineWorkTime[machineId]
+                evaluation.startTime[g.first_layer[i]][g.second_layer[i]][processOrder] = \
+                    max(evaluation.endTime[g.first_layer[i]][g.second_layer[i]][processOrder - 1],
+                        evaluation.machineWorkTime[machineId])
+            evaluation.machineWorkTime[machineId] = evaluation.startTime[g.first_layer[i]][g.second_layer[i]][processOrder] + time
+            evaluation.endTime[g.first_layer[i]][g.second_layer[i]][processOrder] = evaluation.machineWorkTime[machineId]
             evaluation.fulfillTime = max(evaluation.fulfillTime, evaluation.machineWorkTime[machineId])
         return evaluation
 
@@ -217,7 +201,7 @@ class GeneticAlgorithm():
                         index_list.remove(val)
                         firstLayer[val] = i
                         secondLayer[val] = j
-            processCount = [[0 for _ in range(SIZE)] for _ in range(len(self.orderList))]
+            processCount = [[0 for _ in range(len(self.workpieceList))] for _ in range(len(self.orderList))]
             for i in range(processNumber):
                 order = firstLayer[i]
                 workpieceOrder = secondLayer[i]
@@ -290,21 +274,23 @@ class GeneticAlgorithm():
         result = self.evaluate_gene(bestGene)
 
         rowData = []
-        for i in range(len(self.orderList)):
-            for j in range(len(self.orderWorkpiece[i])):
-                for k in range(len(self.orderWorkpiece[i][j].process)):
-                    workpieceId = self.orderWorkpiece[i][j].workpieceIndex
-                    processId = self.orderWorkpiece[i][j].process[k]
-                    machineId = result.processMachine[processId]
-                    temp = {
-                        "order": self.orderList[i],
-                        "workpiece": self.workpieceList[workpieceId],
-                        "process": self.processList[processId],
-                        "machine": self.machineList[machineId],
-                        "startTime": result.startTime[workpieceId][k],
-                        "endTime": result.endTime[workpieceId][k]
-                    }
-                    rowData.append(temp)
+        processCount = [[0 for _ in range(len(self.workpieceList))] for _ in range(len(self.orderList))]
+        for i in range(bestGene.length):
+            orderId = bestGene.first_layer[i]
+            workpieceId = self.orderWorkpiece[orderId][bestGene.second_layer[i]].workpieceIndex
+            processOrder = processCount[orderId][bestGene.second_layer[i]]
+            processId = self.orderWorkpiece[orderId][bestGene.second_layer[i]].process[processOrder]
+            machineId = result.processMachine[processId]
+            processCount[orderId][bestGene.second_layer[i]] += 1
+            temp = {
+                "order": self.orderList[orderId],
+                "workpiece": self.workpieceList[workpieceId],
+                "process": self.processList[processId],
+                "machine": self.machineList[machineId],
+                "startTime": result.startTime[orderId][bestGene.second_layer[i]][processOrder],
+                "endTime": result.endTime[orderId][bestGene.second_layer[i]][processOrder]
+            }
+            rowData.append(temp)
         return rowData, result, fitnessList
 
     def test(self, parameter: List[List[WorkPiece]]):
@@ -329,9 +315,9 @@ if __name__ == "__main__":
             {'order':'#o-1','workpiece':'#w-1','number':10000,'process':'#p-112','machine':['#m-6','#m-7','#m-8','#m-9'],'time':[40,40,40,40]},
             {'order':'#o-1','workpiece':'#w-2','number':10000,'process':'#p-121','machine':['#m-1','#m-2','#m-3','#m-4'],'time':[180,180,180,180]},
             {'order':'#o-1','workpiece':'#w-2','number':10000,'process':'#p-122','machine':['#m-6','#m-7','#m-8','#m-9'],'time':[40,40,40,40]},
-            {'order':'#o-1','workpiece':'#w-3','number':10000,'process':'#p-131','machine':['#m-1','#m-2','#m-3','#m-5'],'time':[340,340,350,350]},
-            {'order':'#o-1','workpiece':'#w-3','number':10000,'process':'#p-132','machine':['#m-6','#m-7','#m-8','#m-9'],'time':[40,38,40,38]},
-            {'order':'#o-1','workpiece':'#w-3','number':10000,'process':'#p-133','machine':['#m-10'],'time':[20]},
+            {'order':'#o-1','workpiece':'#w-3','number':8000,'process':'#p-131','machine':['#m-1','#m-2','#m-3','#m-5'],'time':[340,340,350,350]},
+            {'order':'#o-1','workpiece':'#w-3','number':8000,'process':'#p-132','machine':['#m-6','#m-7','#m-8','#m-9'],'time':[40,38,40,38]},
+            {'order':'#o-1','workpiece':'#w-3','number':8000,'process':'#p-133','machine':['#m-10'],'time':[20]},
             {'order':'#o-2','workpiece':'#w-4','number':1000,'process':'#p-241','machine':['#m-1','#m-2','#m-3','#m-4','#m-5'],'time':[290,290,285,285,290]},
             {'order':'#o-2','workpiece':'#w-4','number':1000,'process':'#p-242','machine':['#m-6','#m-7','#m-9'],'time':[40,40,40]},
             {'order':'#o-2','workpiece':'#w-5','number':10000,'process':'#p-251','machine':['#m-1','#m-2','#m-3','#m-4'],'time':[184,184,180,184]},
@@ -340,9 +326,9 @@ if __name__ == "__main__":
             {'order':'#o-2','workpiece':'#w-6','number':10000,'process':'#p-262','machine':['#m-7','#m-8','#m-9'],'time':[20,20,20]},
             {'order':'#o-3','workpiece':'#w-1','number':8000,'process':'#p-311','machine':['#m-1','#m-2','#m-3','#m-4','#m-5'],'time':[300,300,300,280,280]},
             {'order':'#o-3','workpiece':'#w-1','number':8000,'process':'#p-312','machine':['#m-6','#m-7','#m-8','#m-9'],'time':[40,40,40,40]},
-            {'order':'#o-3','workpiece':'#w-3','number':10000,'process':'#p-331','machine':['#m-1','#m-2','#m-3','#m-5'],'time':[340,340,350,350]},
-            {'order':'#o-3','workpiece':'#w-3','number':10000,'process':'#p-332','machine':['#m-6','#m-7','#m-8','#m-9'],'time':[40,38,40,38]},
-            {'order':'#o-3','workpiece':'#w-3','number':10000,'process':'#p-333','machine':['#m-10'],'time':[20]},
+            {'order':'#o-3','workpiece':'#w-3','number':8000,'process':'#p-331','machine':['#m-1','#m-2','#m-3','#m-5'],'time':[340,340,350,350]},
+            {'order':'#o-3','workpiece':'#w-3','number':8000,'process':'#p-332','machine':['#m-6','#m-7','#m-8','#m-9'],'time':[40,38,40,38]},
+            {'order':'#o-3','workpiece':'#w-3','number':8000,'process':'#p-333','machine':['#m-10'],'time':[20]},
             {'order':'#o-3','workpiece':'#w-7','number':1200,'process':'#p-371 ','machine':['#m-3','#m-4','#m-5'],'time':[660,660,660]},
             {'order':'#o-3','workpiece':'#w-7','number':1200,'process':'#p-372 ','machine':['#m-7','#m-8','#m-9','#m-10'],'time':[40,40,40,40]}]
     orderWorkpiece, orderList, workpieceList, processList, machineList = reshape_data(test)
@@ -351,5 +337,6 @@ if __name__ == "__main__":
     x = [i for i in range(len(fitnessList))]
     plt.plot(x, fitnessList)
     plt.show()
+    # print(rowData)
     print(bestGene.fulfillTime)
     draw_gantt(rowData)
