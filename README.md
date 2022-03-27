@@ -1,6 +1,6 @@
 # WorkshopScheduling
 
-这是一个基于遗传算法解决作业车间生产排产问题，以大连R企业为例
+**简介**：这是一个基于三层编码遗传算法求解作业车间生产排产问题的项目，以大连R企业为例
 
 ## 作者信息
 
@@ -33,14 +33,14 @@ test = [{'order':'#o-1','workpiece':'#w-1','number':100,'process':'#p-111','mach
 ## 项目框架
 
 - [X]  reshaping data
-- [ ]  Implementation of Genetic Algorithm
+- [X]  Implementation of Genetic Algorithm
   - [X]  Three-layer coding
   - [X]  Initializing the population
   - [X]  Evaluating genes
   - [X]  Calculating fitness
   - [X]  Cross
   - [X]  Mutation
-  - [ ]  Selecting gene
+  - [X]  Selecting gene
 - [ ]  Add transfer batch
 - [ ]  Add workpiece switching time
 - [X]  Draw gantt chart
