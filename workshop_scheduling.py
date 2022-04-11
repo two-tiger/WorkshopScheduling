@@ -43,7 +43,7 @@ class GeneEvaluation():
 
 # 遗传算法实现
 class GeneticAlgorithm():
-    def __init__(self, orderList, workpieceList, processList, machineList, wpstMatrix, populationNumber=50, times=50, crossProbability=0.95,
+    def __init__(self, orderList, workpieceList, processList, machineList, wpstMatrix, populationNumber=100, times=400, crossProbability=0.95,
                  mutationProbability=0.05):
         self.populationNumber = populationNumber  # 种群数量
         self.times = times  # 遗传代数
@@ -89,7 +89,8 @@ class GeneticAlgorithm():
                 if evaluation.machineWorkPiece[machineId] == -1 or evaluation.machineWorkPiece[machineId] == presentWorkpiece:
                     machineTime = evaluation.machineWorkTime[machineId]
                 else:
-                    machineTime += self.wpstMatrix[evaluation.machineWorkPiece[machineId]][presentWorkpiece]
+                    machineTime = evaluation.machineWorkTime[machineId] + \
+                                  self.wpstMatrix[evaluation.machineWorkPiece[machineId]][presentWorkpiece]
                 preProcessTime = evaluation.endTime[g.first_layer[i]][g.second_layer[i]][processOrder - 1]
                 evaluation.startTime[g.first_layer[i]][g.second_layer[i]][processOrder] = max(machineTime, preProcessTime)
                 # evaluation.startTime[g.first_layer[i]][g.second_layer[i]][processOrder] = \
@@ -283,7 +284,7 @@ class GeneticAlgorithm():
                     newGenes.append(crossGene1)
                     newGenes.append(crossGene2)
                     count += 2
-            for gene in newGenes: # 变异
+            for gene in newGenes[1:]: # 变异
                 if random() < self.mutationProbability:
                     self.gene_mutation(gene)
             self.genes = newGenes
@@ -358,6 +359,6 @@ if __name__ == "__main__":
     x = [i for i in range(len(fitnessList))]
     plt.plot(x, fitnessList)
     plt.show()
-    # print(rowData)
+    print(rowData)
     print(bestGene.fulfillTime)
     draw_gantt(rowData)

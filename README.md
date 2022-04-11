@@ -106,19 +106,19 @@ workpieceIndex = ['#w-1','#w-2','#w-3','#w-4','#w-5','#w-6','#w-7']
 
 #### Specified parameters:
 
-populationNumber=50
-times=50
+populationNumber=100
+times=400
 crossProbability=0.95
 mutationProbability=0.05
 
 #### Fitness iteration curve:
 
-![Fitness iteration curve](/img/Fitness_iteration_curve.png)
+![Fitness iteration curve](/img/curve.png)
 
 #### Gantt chart:
 
-![Gantt chart](/img/gantt_chart.png)
+![Gantt chart](/img/gantt.png)
 
 #### Minimum time:
 
-4521000
+4002000
