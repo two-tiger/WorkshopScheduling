@@ -43,7 +43,7 @@ class GeneEvaluation():
 
 # 遗传算法实现
 class GeneticAlgorithm():
-    def __init__(self, orderList, workpieceList, processList, machineList, wpstMatrix, populationNumber=100, times=400, crossProbability=0.95,
+    def __init__(self, orderList, workpieceList, processList, machineList, wpstMatrix, populationNumber=100, times=150, crossProbability=0.95,
                  mutationProbability=0.05):
         self.populationNumber = populationNumber  # 种群数量
         self.times = times  # 遗传代数
@@ -266,6 +266,7 @@ class GeneticAlgorithm():
         self.init_population()
 
         fitnessList = [self.select_best().fitness]
+        averageFitness = [sum(map(lambda v: v.fitness, self.genes)) / len(self.genes)]
         bestGene = Gene()
         # 开始进化
         print("------ Start of evolution ------")
@@ -291,6 +292,7 @@ class GeneticAlgorithm():
 
             generateBest = self.select_best()
             fitnessList.append(generateBest.fitness)
+            averageFitness.append(sum(map(lambda v: v.fitness, self.genes)) / len(self.genes))
             if generateBest.fitness > bestGene.fitness:
                 bestGene = generateBest
             print("Max fitness of current generate: {}".format(generateBest.fitness))
@@ -317,48 +319,35 @@ class GeneticAlgorithm():
                 "endTime": result.endTime[orderId][bestGene.second_layer[i]][processOrder]
             }
             rowData.append(temp)
-        return rowData, result, fitnessList
+        return rowData, result, fitnessList, averageFitness
 
 
 if __name__ == "__main__":
     # 测试数据
-    test = [{'order':'#o-1','workpiece':'#w-1','number':10000,'process':'#p-111','machine':['#m-1','#m-2','#m-3','#m-4','#m-5'],'time':[300,300,300,280,280]},
-            {'order':'#o-1','workpiece':'#w-1','number':10000,'process':'#p-112','machine':['#m-6','#m-7','#m-8','#m-9'],'time':[40,40,40,40]},
-            {'order':'#o-1','workpiece':'#w-2','number':10000,'process':'#p-121','machine':['#m-1','#m-2','#m-3','#m-4'],'time':[180,180,180,180]},
-            {'order':'#o-1','workpiece':'#w-2','number':10000,'process':'#p-122','machine':['#m-6','#m-7','#m-8','#m-9'],'time':[40,40,40,40]},
-            {'order':'#o-1','workpiece':'#w-3','number':8000,'process':'#p-131','machine':['#m-1','#m-2','#m-3','#m-5'],'time':[340,340,350,350]},
-            {'order':'#o-1','workpiece':'#w-3','number':8000,'process':'#p-132','machine':['#m-6','#m-7','#m-8','#m-9'],'time':[40,38,40,38]},
-            {'order':'#o-1','workpiece':'#w-3','number':8000,'process':'#p-133','machine':['#m-10'],'time':[20]},
-            {'order':'#o-2','workpiece':'#w-4','number':1000,'process':'#p-241','machine':['#m-1','#m-2','#m-3','#m-4','#m-5'],'time':[290,290,285,285,290]},
-            {'order':'#o-2','workpiece':'#w-4','number':1000,'process':'#p-242','machine':['#m-6','#m-7','#m-9'],'time':[40,40,40]},
-            {'order':'#o-2','workpiece':'#w-5','number':10000,'process':'#p-251','machine':['#m-1','#m-2','#m-3','#m-4'],'time':[184,184,180,184]},
-            {'order':'#o-2','workpiece':'#w-5','number':10000,'process':'#p-252','machine':['#m-6','#m-8','#m-9'],'time':[40,40,40]},
-            {'order':'#o-2','workpiece':'#w-6','number':10000,'process':'#p-261','machine':['#m-4','#m-5'],'time':[140,140]},
-            {'order':'#o-2','workpiece':'#w-6','number':10000,'process':'#p-262','machine':['#m-7','#m-8','#m-9'],'time':[20,20,20]},
-            {'order':'#o-3','workpiece':'#w-1','number':8000,'process':'#p-311','machine':['#m-1','#m-2','#m-3','#m-4','#m-5'],'time':[300,300,300,280,280]},
-            {'order':'#o-3','workpiece':'#w-1','number':8000,'process':'#p-312','machine':['#m-6','#m-7','#m-8','#m-9'],'time':[40,40,40,40]},
-            {'order':'#o-3','workpiece':'#w-3','number':8000,'process':'#p-331','machine':['#m-1','#m-2','#m-3','#m-5'],'time':[340,340,350,350]},
-            {'order':'#o-3','workpiece':'#w-3','number':8000,'process':'#p-332','machine':['#m-6','#m-7','#m-8','#m-9'],'time':[40,38,40,38]},
-            {'order':'#o-3','workpiece':'#w-3','number':8000,'process':'#p-333','machine':['#m-10'],'time':[20]},
-            {'order':'#o-3','workpiece':'#w-7','number':1200,'process':'#p-371','machine':['#m-3','#m-4','#m-5'],'time':[660,660,660]},
-            {'order':'#o-3','workpiece':'#w-7','number':1200,'process':'#p-372','machine':['#m-7','#m-8','#m-9','#m-10'],'time':[40,40,40,40]}]
-    wpstMatrix = np.array([[0, 10, 10, 10, 10, 10, 10],
-                  [10, 0, 20, 20, 20, 20, 20],
-                  [10, 20, 0, 15, 15, 15, 15],
-                  [10, 20, 15, 0, 15, 15, 15],
-                  [15, 20, 10, 15, 0, 10, 10],
-                  [10, 20, 15, 15, 10, 0, 10],
-                  [10, 20, 15, 15, 10, 10, 0]])
-    workpieceIndex = ['#w-1','#w-2','#w-3','#w-4','#w-5','#w-6','#w-7']
+    test = [{'order':'#o-1','workpiece':'#w-1','number':1,'process':'#p-111','machine':['#m-1','#m-2'],'time':[30,30]},
+            {'order':'#o-1','workpiece':'#w-1','number':1,'process':'#p-112','machine':['#m-4','#m-5'],'time':[20,20]},
+            {'order':'#o-1','workpiece':'#w-2','number':1,'process':'#p-121','machine':['#m-1','#m-2','#m-3'],'time':[18,18,18]},
+            {'order':'#o-1','workpiece':'#w-2','number':1,'process':'#p-122','machine':['#m-4','#m-5'],'time':[20,20]},
+            {'order':'#o-2','workpiece':'#w-4','number':1,'process':'#p-241','machine':['#m-1','#m-3'],'time':[29,29]},
+            {'order':'#o-2','workpiece':'#w-4','number':1,'process':'#p-242','machine':['#m-5','#m-6'],'time':[40,40]},
+            {'order':'#o-3','workpiece':'#w-3','number':1,'process':'#p-331','machine':['#m-1','#m-2'],'time':[34,34]},
+            {'order':'#o-3','workpiece':'#w-3','number':1,'process':'#p-332','machine':['#m-4'],'time':[40]},
+            {'order':'#o-3','workpiece':'#w-3','number':1,'process':'#p-333','machine':['#m-4','#m-5'],'time':[20,20]}]
+    wpstMatrix = np.array([[0, 10, 10, 10],
+                  [10, 0, 20, 20],
+                  [10, 20, 0, 15],
+                  [10, 20, 15, 0]])
+    workpieceIndex = ['#w-1','#w-2','#w-3','#w-4']
     orderWorkpiece, orderList, workpieceList, processList, machineList = reshape_data(test)
     idx = np.array([workpieceIndex.index(x) for x in workpieceList],dtype=int)
     wpstMatrix = wpstMatrix[idx, :][:, idx]
-    wpstMatrix *= 100
+    # wpstMatrix *= 100
     ga = GeneticAlgorithm(orderList, workpieceList, processList, machineList, wpstMatrix)
-    rowData, bestGene, fitnessList = ga.exec(orderWorkpiece)
+    rowData, bestGene, fitnessList, averageFitness = ga.exec(orderWorkpiece)
     x = [i for i in range(len(fitnessList))]
     plt.plot(x, fitnessList)
+    plt.plot(x, averageFitness)
     plt.show()
-    print(rowData)
+    # print(rowData)
     print(bestGene.fulfillTime)
     draw_gantt(rowData)

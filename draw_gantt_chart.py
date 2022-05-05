@@ -23,16 +23,18 @@ def draw_gantt(result):
     for i in range(len(workpiece)):
         workpiece_color[workpiece[i]] = plt.cm.Accent(i)
     for i in range(len(result)):
+        order_name = result[i]['order']
         machine_id = machine_index[result[i]['machine']]
         start_time = result[i]['startTime']
         end_time = result[i]['endTime']
         width = end_time - start_time
         workpiece_name = result[i]['workpiece']
         color = workpiece_color[workpiece_name]
-        process_name = result[i]['process']
-        process_time = process_name + ' 时间 ' + str(width)
+        # process_name = result[i]['process']
+        # process_time = process_name + ' 时间 ' + str(width)
         plt.barh(machine_id, width, left=start_time, facecolor=color, edgecolor='black', label=workpiece_name)
-        plt.text(start_time, machine_id, str(width), fontsize='large', color='black')
+        text = order_name + '-' + workpiece_name + ':' + str(end_time)
+        plt.text(start_time, machine_id, text, fontsize='large', color='black')
     plt.title('调度甘特图')
     plt.yticks(range(len(machine)), machine)
     # plt.xticks(range(50))
