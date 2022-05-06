@@ -43,8 +43,8 @@ class GeneEvaluation():
 
 # 遗传算法实现
 class GeneticAlgorithm():
-    def __init__(self, orderList, workpieceList, processList, machineList, wpstMatrix, populationNumber=100, times=150, crossProbability=0.95,
-                 mutationProbability=0.05):
+    def __init__(self, orderList, workpieceList, processList, machineList, wpstMatrix, populationNumber=150, times=400,
+                 crossProbability=0.8, mutationProbability=0.1):
         self.populationNumber = populationNumber  # 种群数量
         self.times = times  # 遗传代数
         self.crossProbability = crossProbability  # 交叉概率
@@ -269,9 +269,9 @@ class GeneticAlgorithm():
         averageFitness = [sum(map(lambda v: v.fitness, self.genes)) / len(self.genes)]
         bestGene = Gene()
         # 开始进化
-        print("------ Start of evolution ------")
+        #print("------ Start of evolution ------")
         for generate in range(self.times):
-            print("################### Generation {} ###################".format(generate))
+            #print("################### Generation {} ###################".format(generate))
             genes = sorted(self.genes, key=lambda x: x.fitness, reverse=True)
             retainNumber = int(self.populationNumber * 0.8)
             optNumber = self.populationNumber - retainNumber
@@ -295,9 +295,9 @@ class GeneticAlgorithm():
             averageFitness.append(sum(map(lambda v: v.fitness, self.genes)) / len(self.genes))
             if generateBest.fitness > bestGene.fitness:
                 bestGene = generateBest
-            print("Max fitness of current generate: {}".format(generateBest.fitness))
+            #print("Max fitness of current generate: {}".format(generateBest.fitness))
 
-        print("------ End of evolution ------")
+        #print("------ End of evolution ------")
 
         result = self.evaluate_gene(bestGene)
 
@@ -351,3 +351,4 @@ if __name__ == "__main__":
     # print(rowData)
     print(bestGene.fulfillTime)
     draw_gantt(rowData)
+    plt.show()

@@ -21,7 +21,7 @@ def draw_gantt(result):
         machine_index[machine[i]] = i
     workpiece_color = {}
     for i in range(len(workpiece)):
-        workpiece_color[workpiece[i]] = plt.cm.Accent(i)
+        workpiece_color[workpiece[i]] = plt.cm.tab20(i)
     for i in range(len(result)):
         order_name = result[i]['order']
         machine_id = machine_index[result[i]['machine']]
@@ -35,7 +35,7 @@ def draw_gantt(result):
         plt.barh(machine_id, width, left=start_time, facecolor=color, edgecolor='black', label=workpiece_name)
         text = order_name + '-' + workpiece_name + ':' + str(end_time)
         plt.text(start_time, machine_id, text, fontsize='large', color='black')
-    plt.title('调度甘特图')
+    plt.title('调度甘特图', fontdict={'weight':'normal','size': 20})
     plt.yticks(range(len(machine)), machine)
     # plt.xticks(range(50))
     handles, labels = plt.gca().get_legend_handles_labels()
@@ -45,6 +45,6 @@ def draw_gantt(result):
             handle_list.append(handle)
             label_list.append(label)
     plt.legend(handle_list, label_list)
-    plt.ylabel('机器编号')
-    plt.xlabel('时间')
-    plt.show()
+    plt.ylabel('机器编号', fontdict={'weight':'normal','size': 13})
+    plt.xlabel('时间', fontdict={'weight':'normal','size': 13})
+    #plt.show()
