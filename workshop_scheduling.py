@@ -35,6 +35,7 @@ class GeneEvaluation():
         self.processMachine = [0 for _ in range(processNumber)] # 存储每一步使用的机器
         self.machineWorkTime = [0 for _ in range(machineNumber)] # 存储机器工作时间
         self.machineWorkPiece = [-1 for _ in range(machineNumber)] # 记录机器正在加工的工件序号
+        self.machineEmptyTime = [[] for _ in range(machineNumber)] # 记录机器上的空窗时间
         # 存储每一步开始时间
         self.startTime = [[[0 for _ in range(processNumber)] for _ in range(workpieceNumber)] for _ in range(orderNumber)]
         # 存储每一步结束时间
@@ -43,7 +44,7 @@ class GeneEvaluation():
 
 # 遗传算法实现
 class GeneticAlgorithm():
-    def __init__(self, orderList, workpieceList, processList, machineList, wpstMatrix, populationNumber=150, times=400,
+    def __init__(self, orderList, workpieceList, processList, machineList, wpstMatrix, orderPriority, populationNumber=150, times=400,
                  crossProbability=0.8, mutationProbability=0.1):
         self.populationNumber = populationNumber  # 种群数量
         self.times = times  # 遗传代数
@@ -55,6 +56,7 @@ class GeneticAlgorithm():
         self.processList = processList # 步骤列表
         self.machineList = machineList # 机器列表
         self.wpstMatrix = wpstMatrix # 换机时间矩阵
+        self.orderPriority = orderPriority # 订单优先级
 
         self.orderWorkpiece = None # 订单工件信息存储
 
@@ -62,45 +64,100 @@ class GeneticAlgorithm():
 
     # 评估基因长度，计算每步开始时间和结束时间
     def evaluate_gene(self, g: Gene) -> GeneEvaluation:
+        # 根据订单顺序调整染色体
+        priorityList = np.array([self.orderPriority[i] for i in g.first_layer])
+        idxPriority = np.argsort(priorityList, kind='stable')
+        firstLayer = np.array(g.first_layer)
+        secondLayer = np.array(g.second_layer)
+        thirdLayer = np.array(g.third_layer)
+        firstLayer = firstLayer[idxPriority]
+        secondLayer = secondLayer[idxPriority]
+        thirdLayer = thirdLayer[idxPriority]
+        # 解码存储初始化
         processNumber = len(self.processList)
         machineNumber = len(self.machineList)
         orderNumber = len(self.orderList)
         workpieceNumber = len(self.workpieceList)
-        evaluation = GeneEvaluation(processNumber,machineNumber,orderNumber,workpieceNumber)
-        processCount = [[0 for _ in range(workpieceNumber)] for _ in range(orderNumber)] # 步骤计数
+        evaluation = GeneEvaluation(processNumber, machineNumber, orderNumber, workpieceNumber)
+        # 步骤计数
+        processCount = [[0 for _ in range(workpieceNumber)] for _ in range(orderNumber)]
         for i in range(g.length):
-            presentWorkpiece = self.orderWorkpiece[g.first_layer[i]][g.second_layer[i]].workpieceIndex
-            processOrder = processCount[g.first_layer[i]][g.second_layer[i]]
-            processId = self.orderWorkpiece[g.first_layer[i]][g.second_layer[i]].process[processOrder]
-            machineId = self.orderWorkpiece[g.first_layer[i]][g.second_layer[i]].machine[processOrder][g.third_layer[i]]
+            # 当前步骤信息记录
+            presentWorkpiece = self.orderWorkpiece[firstLayer[i]][secondLayer[i]].workpieceIndex
+            processOrder = processCount[firstLayer[i]][secondLayer[i]]
+            processId = self.orderWorkpiece[firstLayer[i]][secondLayer[i]].process[processOrder]
+            machineId = self.orderWorkpiece[firstLayer[i]][secondLayer[i]].machine[processOrder][thirdLayer[i]]
             evaluation.processMachine[processId] = machineId
-            time = self.orderWorkpiece[g.first_layer[i]][g.second_layer[i]].time[processOrder][g.third_layer[i]]
-            time *= self.orderWorkpiece[g.first_layer[i]][g.second_layer[i]].number
-            processCount[g.first_layer[i]][g.second_layer[i]] += 1
-            # 每一步骤开始结束时间及机器运行时间解码
-            if processOrder == 0:
-                evaluation.startTime[g.first_layer[i]][g.second_layer[i]][processOrder] = evaluation.machineWorkTime[machineId]
-                if evaluation.machineWorkPiece[machineId] == -1 or evaluation.machineWorkPiece[machineId] == presentWorkpiece:
-                    pass
-                else:
-                    evaluation.startTime[g.first_layer[i]][g.second_layer[i]][processOrder] += \
-                        self.wpstMatrix[evaluation.machineWorkPiece[machineId]][presentWorkpiece]
+            time = self.orderWorkpiece[firstLayer[i]][secondLayer[i]].time[processOrder][thirdLayer[i]]
+            time *= self.orderWorkpiece[firstLayer[i]][secondLayer[i]].number
+            processCount[firstLayer[i]][secondLayer[i]] += 1
+            # 步骤在机器上开始和结束时间解码
+            # 该工序为工件的第一道加工工序，且是机器的第一道加工工序，直接从机器的零时刻进行加工
+            if processOrder == 0 and evaluation.machineWorkTime[machineId] == 0:
+                evaluation.startTime[firstLayer[i]][secondLayer[i]][processOrder] = 0
+
+            # 工序是机器的第一道工序，不是工件的第一道工序，从上道工序完工时间处开始加工
+            elif evaluation.machineWorkTime[machineId] == 0 and processOrder > 0:
+                evaluation.startTime[firstLayer[i]][secondLayer[i]][processOrder] = \
+                    evaluation.endTime[firstLayer[i]][secondLayer[i]][processOrder - 1]
+                emptyStart = 0
+                emptyEnd = evaluation.startTime[firstLayer[i]][secondLayer[i]][processOrder]
+                preWorkpiece = -1
+                aftWorkpiece = presentWorkpiece
+                evaluation.machineEmptyTime[machineId].append(np.array([emptyStart, emptyEnd, preWorkpiece, aftWorkpiece]))
+
+            # 工序不是机器的第一道工序，是工件的第一道工序
+            elif processOrder == 0 and evaluation.machineWorkTime[machineId] != 0:
+                for empty_time in evaluation.machineEmptyTime[machineId]:
+                    needTime = time
+                    if empty_time[2] != -1:
+                        needTime += self.wpstMatrix[empty_time[2]][presentWorkpiece]
+                        needTime += self.wpstMatrix[preWorkpiece][empty_time[3]]
+                    else:
+                        needTime += self.wpstMatrix[preWorkpiece][empty_time[3]]
+                    if needTime <= (empty_time[1] - empty_time[0]):
+                        evaluation.startTime[firstLayer[i]][secondLayer[i]][processOrder] = \
+                            empty_time[0] + self.wpstMatrix[empty_time[2]][presentWorkpiece]
+                        empty_time[0] = evaluation.startTime[firstLayer[i]][secondLayer[i]][processOrder] + time
+                        empty_time[2] = presentWorkpiece
+                        break
+                if evaluation.startTime[firstLayer[i]][secondLayer[i]][processOrder] == 0:
+                    evaluation.startTime[firstLayer[i]][secondLayer[i]][processOrder] = \
+                        evaluation.machineWorkTime[machineId] + self.wpstMatrix[evaluation.machineWorkPiece[machineId]][presentWorkpiece]
+
+            # 工序既不是机器的第一道工序，也不是工件的第一道工序
             else:
-                if evaluation.machineWorkPiece[machineId] == -1 or evaluation.machineWorkPiece[machineId] == presentWorkpiece:
-                    machineTime = evaluation.machineWorkTime[machineId]
-                else:
+                for empty_time in evaluation.machineEmptyTime[machineId]:
+                    if empty_time[2] == -1:
+                        continue
+                    start_time = max(empty_time[0] + self.wpstMatrix[empty_time[2]][presentWorkpiece],
+                                     evaluation.endTime[firstLayer[i]][secondLayer[i]][processOrder - 1])
+                    end_time = start_time + time + self.wpstMatrix[preWorkpiece][empty_time[3]]
+                    if end_time <= empty_time[1]:
+                        evaluation.startTime[firstLayer[i]][secondLayer[i]][processOrder] = start_time
+                        empty_time[0] = start_time + time
+                        empty_time[2] = presentWorkpiece
+                        break
+                if evaluation.startTime[firstLayer[i]][secondLayer[i]][processOrder] == 0:
                     machineTime = evaluation.machineWorkTime[machineId] + \
                                   self.wpstMatrix[evaluation.machineWorkPiece[machineId]][presentWorkpiece]
-                preProcessTime = evaluation.endTime[g.first_layer[i]][g.second_layer[i]][processOrder - 1]
-                evaluation.startTime[g.first_layer[i]][g.second_layer[i]][processOrder] = max(machineTime, preProcessTime)
-                # evaluation.startTime[g.first_layer[i]][g.second_layer[i]][processOrder] = \
-                #     max(evaluation.endTime[g.first_layer[i]][g.second_layer[i]][processOrder - 1],
-                #         evaluation.machineWorkTime[machineId])
-            evaluation.machineWorkTime[machineId] = evaluation.startTime[g.first_layer[i]][g.second_layer[i]][processOrder] + time
+                    preProcessTime = evaluation.endTime[firstLayer[i]][secondLayer[i]][processOrder - 1]
+                    if machineTime >= preProcessTime:
+                        evaluation.startTime[firstLayer[i]][secondLayer[i]][processOrder] = machineTime
+                    else:
+                        evaluation.startTime[firstLayer[i]][secondLayer[i]][processOrder] = preProcessTime
+                        emptyStart = evaluation.machineWorkTime[machineId]
+                        emptyEnd = preProcessTime
+                        preWorkpiece = evaluation.machineWorkPiece[machineId]
+                        aftWorkpiece = presentWorkpiece
+                        evaluation.machineEmptyTime[machineId].append(np.array([emptyStart, emptyEnd, preWorkpiece, aftWorkpiece]))
+            # 解码
+            evaluation.endTime[firstLayer[i]][secondLayer[i]][processOrder] = evaluation.startTime[firstLayer[i]][secondLayer[i]][processOrder] + time
+            evaluation.machineWorkTime[machineId] = max(evaluation.machineWorkTime[machineId], evaluation.endTime[firstLayer[i]][secondLayer[i]][processOrder])
             evaluation.machineWorkPiece[machineId] = presentWorkpiece
-            evaluation.endTime[g.first_layer[i]][g.second_layer[i]][processOrder] = evaluation.machineWorkTime[machineId]
             evaluation.fulfillTime = max(evaluation.fulfillTime, evaluation.machineWorkTime[machineId])
         return evaluation
+
 
     # 计算适应度
     def calculate_fitness(self, g: Gene) -> float:
@@ -273,7 +330,7 @@ class GeneticAlgorithm():
         for generate in range(self.times):
             #print("################### Generation {} ###################".format(generate))
             genes = sorted(self.genes, key=lambda x: x.fitness, reverse=True)
-            retainNumber = int(self.populationNumber * 0.8)
+            retainNumber = int(self.populationNumber * 0.7)
             optNumber = self.populationNumber - retainNumber
             newGenes : list = genes[0:retainNumber]
             count = 0
@@ -299,6 +356,7 @@ class GeneticAlgorithm():
 
         #print("------ End of evolution ------")
 
+        # bestGene.print_gene()
         result = self.evaluate_gene(bestGene)
 
         rowData = []
@@ -324,31 +382,60 @@ class GeneticAlgorithm():
 
 if __name__ == "__main__":
     # 测试数据
-    test = [{'order':'#o-1','workpiece':'#w-1','number':1,'process':'#p-111','machine':['#m-1','#m-2'],'time':[30,30]},
-            {'order':'#o-1','workpiece':'#w-1','number':1,'process':'#p-112','machine':['#m-4','#m-5'],'time':[20,20]},
-            {'order':'#o-1','workpiece':'#w-2','number':1,'process':'#p-121','machine':['#m-1','#m-2','#m-3'],'time':[18,18,18]},
-            {'order':'#o-1','workpiece':'#w-2','number':1,'process':'#p-122','machine':['#m-4','#m-5'],'time':[20,20]},
-            {'order':'#o-2','workpiece':'#w-4','number':1,'process':'#p-241','machine':['#m-1','#m-3'],'time':[29,29]},
-            {'order':'#o-2','workpiece':'#w-4','number':1,'process':'#p-242','machine':['#m-5','#m-6'],'time':[40,40]},
-            {'order':'#o-3','workpiece':'#w-3','number':1,'process':'#p-331','machine':['#m-1','#m-2'],'time':[34,34]},
-            {'order':'#o-3','workpiece':'#w-3','number':1,'process':'#p-332','machine':['#m-4'],'time':[40]},
-            {'order':'#o-3','workpiece':'#w-3','number':1,'process':'#p-333','machine':['#m-4','#m-5'],'time':[20,20]}]
-    wpstMatrix = np.array([[0, 10, 10, 10],
-                  [10, 0, 20, 20],
-                  [10, 20, 0, 15],
-                  [10, 20, 15, 0]])
-    workpieceIndex = ['#w-1','#w-2','#w-3','#w-4']
+    test = [{'order':'#o-1','workpiece':'#w-1','number':10000,'process':'#p-111','machine':['#m-1','#m-2','#m-3','#m-4','#m-5'],'time':[300,300,300,280,280]},
+               {'order':'#o-1','workpiece':'#w-1','number':10000,'process':'#p-112','machine':['#m-6','#m-7','#m-8','#m-9'],'time':[40,40,40,40]},
+               {'order':'#o-1','workpiece':'#w-2','number':10000,'process':'#p-121','machine':['#m-1','#m-2','#m-3','#m-4'],'time':[180,180,180,180]},
+               {'order':'#o-1','workpiece':'#w-2','number':10000,'process':'#p-122','machine':['#m-6','#m-7','#m-8','#m-9'],'time':[40,40,40,40]},
+               {'order':'#o-1','workpiece':'#w-3','number':8000,'process':'#p-131','machine':['#m-1','#m-2','#m-3','#m-5'],'time':[340,340,350,350]},
+               {'order':'#o-1','workpiece':'#w-3','number':8000,'process':'#p-132','machine':['#m-6','#m-7','#m-8','#m-9'],'time':[40,38,40,38]},
+               {'order':'#o-1','workpiece':'#w-3','number':8000,'process':'#p-133','machine':['#m-10'],'time':[20]},
+               {'order':'#o-2','workpiece':'#w-4','number':1000,'process':'#p-241','machine':['#m-1','#m-2','#m-3','#m-4','#m-5'],'time':[290,290,285,285,290]},
+               {'order':'#o-2','workpiece':'#w-4','number':1000,'process':'#p-242','machine':['#m-6','#m-7','#m-9'],'time':[40,40,40]},
+               {'order':'#o-2','workpiece':'#w-5','number':10000,'process':'#p-251','machine':['#m-1','#m-2','#m-3','#m-4'],'time':[184,184,180,184]},
+               {'order':'#o-2','workpiece':'#w-5','number':10000,'process':'#p-252','machine':['#m-6','#m-8','#m-9'],'time':[40,40,40]},
+               {'order':'#o-2','workpiece':'#w-6','number':10000,'process':'#p-261','machine':['#m-4','#m-5'],'time':[140,140]},
+               {'order':'#o-2','workpiece':'#w-6','number':10000,'process':'#p-262','machine':['#m-7','#m-8','#m-9'],'time':[20,20,20]},
+               {'order':'#o-3','workpiece':'#w-1','number':8000,'process':'#p-311','machine':['#m-1','#m-2','#m-3','#m-4','#m-5'],'time':[300,300,300,280,280]},
+               {'order':'#o-3','workpiece':'#w-1','number':8000,'process':'#p-312','machine':['#m-6','#m-7','#m-8','#m-9'],'time':[40,40,40,40]},
+               {'order':'#o-3','workpiece':'#w-3','number':8000,'process':'#p-331','machine':['#m-1','#m-2','#m-3','#m-5'],'time':[340,340,350,350]},
+               {'order':'#o-3','workpiece':'#w-3','number':8000,'process':'#p-332','machine':['#m-6','#m-7','#m-8','#m-9'],'time':[40,38,40,38]},
+               {'order':'#o-3','workpiece':'#w-3','number':8000,'process':'#p-333','machine':['#m-10'],'time':[20]},
+               {'order':'#o-3','workpiece':'#w-7','number':1200,'process':'#p-371','machine':['#m-3','#m-4','#m-5'],'time':[660,660,660]},
+               {'order':'#o-3','workpiece':'#w-7','number':1200,'process':'#p-372','machine':['#m-7','#m-8','#m-9','#m-10'],'time':[40,40,40,40]}]
+    wpstMatrix = np.array([[0, 10, 10, 10, 10, 10, 10],
+                           [10, 0, 20, 20, 20, 20, 20],
+                           [10, 20, 0, 15, 15, 15, 15],
+                           [10, 20, 15, 0, 15, 15, 15],
+                           [15, 20, 10, 15, 0, 10, 10],
+                           [10, 20, 15, 15, 10, 0, 10],
+                           [10, 20, 15, 15, 10, 10, 0]])
+    workpieceIndex = ['#w-1','#w-2','#w-3','#w-4','#w-5','#w-6','#w-7']
+    # 注 ： 数字越小代表优先级越高
+    orderPriority = np.array([2, 1, 2])
+    orderIndex = ['#o-1', '#o-2', '#o-3']
     orderWorkpiece, orderList, workpieceList, processList, machineList = reshape_data(test)
-    idx = np.array([workpieceIndex.index(x) for x in workpieceList],dtype=int)
-    wpstMatrix = wpstMatrix[idx, :][:, idx]
-    # wpstMatrix *= 100
-    ga = GeneticAlgorithm(orderList, workpieceList, processList, machineList, wpstMatrix)
+    idxWorkpiece = np.array([workpieceIndex.index(x) for x in workpieceList], dtype=int)
+    wpstMatrix = wpstMatrix[idxWorkpiece, :][:, idxWorkpiece]
+    idxOrder = np.array([orderIndex.index(x) for x in orderList], dtype=int)
+    orderPriority = orderPriority[idxOrder]
+    ga = GeneticAlgorithm(orderList, workpieceList, processList, machineList, wpstMatrix, orderPriority)
     rowData, bestGene, fitnessList, averageFitness = ga.exec(orderWorkpiece)
     x = [i for i in range(len(fitnessList))]
+    plt.cla()
+    plt.figure(figsize=(12, 10))
+    plt.title('实验迭代曲线图', fontdict={'weight': 'normal', 'size': 16})
     plt.plot(x, fitnessList)
     plt.plot(x, averageFitness)
+    plt.ylabel('进化代数', fontdict={'weight': 'normal', 'size': 16})
+    plt.xlabel('适应度值', fontdict={'weight': 'normal', 'size': 16})
+    #plt.savefig('./img/curve.svg')
     plt.show()
-    # print(rowData)
+    #plt.close()
+    plt.cla()
+    #print(rowData)
     print(bestGene.fulfillTime)
+    plt.figure(figsize=(18, 10))
     draw_gantt(rowData)
+    #plt.savefig('./img/gantt.svg')
     plt.show()
+    #plt.close()
