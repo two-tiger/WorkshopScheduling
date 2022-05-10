@@ -113,11 +113,11 @@ mutationProbability=0.05
 
 #### Fitness iteration curve:
 
-![Fitness iteration curve](/img/curve.png)
+![Fitness iteration curve](/img/curve.svg)
 
 #### Gantt chart:
 
-![Gantt chart](/img/gantt.png)
+![Gantt chart](/img/gantt.svg)
 
 #### Minimum time:
 

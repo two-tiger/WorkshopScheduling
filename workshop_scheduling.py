@@ -36,6 +36,7 @@ class GeneEvaluation():
         self.machineWorkTime = [0 for _ in range(machineNumber)] # 存储机器工作时间
         self.machineWorkPiece = [-1 for _ in range(machineNumber)] # 记录机器正在加工的工件序号
         self.machineEmptyTime = [[] for _ in range(machineNumber)] # 记录机器上的空窗时间
+        self.orderCompleteTime = [0 for _ in range(orderNumber)] # 记录订单完成时间
         # 存储每一步开始时间
         self.startTime = [[[0 for _ in range(processNumber)] for _ in range(workpieceNumber)] for _ in range(orderNumber)]
         # 存储每一步结束时间
@@ -156,6 +157,8 @@ class GeneticAlgorithm():
             evaluation.machineWorkTime[machineId] = max(evaluation.machineWorkTime[machineId], evaluation.endTime[firstLayer[i]][secondLayer[i]][processOrder])
             evaluation.machineWorkPiece[machineId] = presentWorkpiece
             evaluation.fulfillTime = max(evaluation.fulfillTime, evaluation.machineWorkTime[machineId])
+            evaluation.orderCompleteTime[firstLayer[i]] = max(evaluation.orderCompleteTime[firstLayer[i]],
+                                                              evaluation.endTime[firstLayer[i]][secondLayer[i]][processOrder])
         return evaluation
 
 
@@ -213,9 +216,6 @@ class GeneticAlgorithm():
         child.second_layer = secondLayer
         child.third_layer = thirdLayer
         child.fitness = self.calculate_fitness(child)
-        # child.print_gene()
-        # child.fitness = self.calculate_fitness(child)
-        # child.print_gene()
         return child
 
     # 基因变异 前两层：交换变异 第三层：基本位变异
@@ -237,14 +237,12 @@ class GeneticAlgorithm():
         pos2 = randint(0, chromosomeSize - 1) # 确定两个变异点
         g.first_layer[pos1], g.first_layer[pos2] = g.first_layer[pos2], g.first_layer[pos1]
         g.second_layer[pos1], g.second_layer[pos2] = g.second_layer[pos2], g.second_layer[pos1]
-        # g.third_layer[pos1], g.third_layer[pos2] = g.third_layer[pos2], g.third_layer[pos1]
         # 基本位变异
         pos3 = randint(0, chromosomeSize - 1) # 确定基本位变异点
         processCountNew = [[0 for _ in range(workpieceNumber)] for _ in range(orderNumber)]
         for i in range(chromosomeSize):
             processOrderNew = processCountNew[g.first_layer[i]][g.second_layer[i]]
             if i == pos3:
-                # processMachine = self.orderWorkpiece[g.first_layer[i]][g.second_layer[i]].machine[processOrderNew]
                 processTime = self.orderWorkpiece[g.first_layer[i]][g.second_layer[i]].time[processOrderNew]
                 machineProbability = [1/i for i in processTime]
                 sumProbability = sum(machineProbability)
@@ -377,7 +375,10 @@ class GeneticAlgorithm():
                 "endTime": result.endTime[orderId][bestGene.second_layer[i]][processOrder]
             }
             rowData.append(temp)
-        return rowData, result, fitnessList, averageFitness
+        orderComTime = {}
+        for index, completeTime in enumerate(result.orderCompleteTime):
+            orderComTime[self.orderList[index]] = completeTime
+        return rowData, result, fitnessList, averageFitness, orderComTime
 
 
 if __name__ == "__main__":
@@ -419,23 +420,24 @@ if __name__ == "__main__":
     idxOrder = np.array([orderIndex.index(x) for x in orderList], dtype=int)
     orderPriority = orderPriority[idxOrder]
     ga = GeneticAlgorithm(orderList, workpieceList, processList, machineList, wpstMatrix, orderPriority)
-    rowData, bestGene, fitnessList, averageFitness = ga.exec(orderWorkpiece)
+    rowData, bestGene, fitnessList, averageFitness, orderCompleteTime = ga.exec(orderWorkpiece)
     x = [i for i in range(len(fitnessList))]
     plt.cla()
     plt.figure(figsize=(12, 10))
     plt.title('实验迭代曲线图', fontdict={'weight': 'normal', 'size': 16})
     plt.plot(x, fitnessList)
-    plt.plot(x, averageFitness)
+    # plt.plot(x, averageFitness)
     plt.ylabel('进化代数', fontdict={'weight': 'normal', 'size': 16})
     plt.xlabel('适应度值', fontdict={'weight': 'normal', 'size': 16})
-    #plt.savefig('./img/curve.svg')
-    plt.show()
-    #plt.close()
+    plt.savefig('./img/curve.svg')
+    #plt.show()
+    plt.close()
     plt.cla()
     #print(rowData)
     print(bestGene.fulfillTime)
+    print(orderCompleteTime)
     plt.figure(figsize=(18, 10))
     draw_gantt(rowData)
-    #plt.savefig('./img/gantt.svg')
-    plt.show()
-    #plt.close()
+    plt.savefig('./img/gantt.svg')
+    #plt.show()
+    plt.close()
