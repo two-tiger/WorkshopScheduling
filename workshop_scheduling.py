@@ -12,6 +12,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 from reshape_tool import reshape_data, WorkPiece
 from draw_gantt_chart import draw_gantt
+import json
+import time
+from tqdm import tqdm
 
 
 # 三层编码基因
@@ -377,67 +380,73 @@ class GeneticAlgorithm():
             rowData.append(temp)
         orderComTime = {}
         for index, completeTime in enumerate(result.orderCompleteTime):
-            orderComTime[self.orderList[index]] = completeTime
+            orderComTime[self.orderList[index]] = str(completeTime)
         return rowData, result, fitnessList, averageFitness, orderComTime
 
 
 if __name__ == "__main__":
     # 测试数据
-    test = [{'order':'#o-1','workpiece':'#w-1','number':10000,'process':'#p-111','machine':['#m-1','#m-2','#m-3','#m-4','#m-5'],'time':[300,300,300,280,280]},
-               {'order':'#o-1','workpiece':'#w-1','number':10000,'process':'#p-112','machine':['#m-6','#m-7','#m-8','#m-9'],'time':[40,40,40,40]},
-               {'order':'#o-1','workpiece':'#w-2','number':10000,'process':'#p-121','machine':['#m-1','#m-2','#m-3','#m-4'],'time':[180,180,180,180]},
-               {'order':'#o-1','workpiece':'#w-2','number':10000,'process':'#p-122','machine':['#m-6','#m-7','#m-8','#m-9'],'time':[40,40,40,40]},
-               {'order':'#o-1','workpiece':'#w-3','number':8000,'process':'#p-131','machine':['#m-1','#m-2','#m-3','#m-5'],'time':[340,340,350,350]},
-               {'order':'#o-1','workpiece':'#w-3','number':8000,'process':'#p-132','machine':['#m-6','#m-7','#m-8','#m-9'],'time':[40,38,40,38]},
-               {'order':'#o-1','workpiece':'#w-3','number':8000,'process':'#p-133','machine':['#m-10'],'time':[20]},
-               {'order':'#o-2','workpiece':'#w-4','number':1000,'process':'#p-241','machine':['#m-1','#m-2','#m-3','#m-4','#m-5'],'time':[290,290,285,285,290]},
-               {'order':'#o-2','workpiece':'#w-4','number':1000,'process':'#p-242','machine':['#m-6','#m-7','#m-9'],'time':[40,40,40]},
-               {'order':'#o-2','workpiece':'#w-5','number':10000,'process':'#p-251','machine':['#m-1','#m-2','#m-3','#m-4'],'time':[184,184,180,184]},
-               {'order':'#o-2','workpiece':'#w-5','number':10000,'process':'#p-252','machine':['#m-6','#m-8','#m-9'],'time':[40,40,40]},
-               {'order':'#o-2','workpiece':'#w-6','number':10000,'process':'#p-261','machine':['#m-4','#m-5'],'time':[140,140]},
-               {'order':'#o-2','workpiece':'#w-6','number':10000,'process':'#p-262','machine':['#m-7','#m-8','#m-9'],'time':[20,20,20]},
-               {'order':'#o-3','workpiece':'#w-1','number':8000,'process':'#p-311','machine':['#m-1','#m-2','#m-3','#m-4','#m-5'],'time':[300,300,300,280,280]},
-               {'order':'#o-3','workpiece':'#w-1','number':8000,'process':'#p-312','machine':['#m-6','#m-7','#m-8','#m-9'],'time':[40,40,40,40]},
-               {'order':'#o-3','workpiece':'#w-3','number':8000,'process':'#p-331','machine':['#m-1','#m-2','#m-3','#m-5'],'time':[340,340,350,350]},
-               {'order':'#o-3','workpiece':'#w-3','number':8000,'process':'#p-332','machine':['#m-6','#m-7','#m-8','#m-9'],'time':[40,38,40,38]},
-               {'order':'#o-3','workpiece':'#w-3','number':8000,'process':'#p-333','machine':['#m-10'],'time':[20]},
-               {'order':'#o-3','workpiece':'#w-7','number':1200,'process':'#p-371','machine':['#m-3','#m-4','#m-5'],'time':[660,660,660]},
-               {'order':'#o-3','workpiece':'#w-7','number':1200,'process':'#p-372','machine':['#m-7','#m-8','#m-9','#m-10'],'time':[40,40,40,40]}]
-    wpstMatrix = np.array([[0, 10, 10, 10, 10, 10, 10],
-                           [10, 0, 20, 20, 20, 20, 20],
-                           [10, 20, 0, 15, 15, 15, 15],
-                           [10, 20, 15, 0, 15, 15, 15],
-                           [15, 20, 10, 15, 0, 10, 10],
-                           [10, 20, 15, 15, 10, 0, 10],
-                           [10, 20, 15, 15, 10, 10, 0]])
-    workpieceIndex = ['#w-1','#w-2','#w-3','#w-4','#w-5','#w-6','#w-7']
+    test = [{'order':'#o-1','workpiece':'#w-1','number':10,'process':'#p-111','machine':['#m-1','#m-2'],'time':[30,30]},
+            {'order':'#o-1','workpiece':'#w-1','number':10,'process':'#p-112','machine':['#m-4','#m-5'],'time':[20,20]},
+            {'order':'#o-1','workpiece':'#w-2','number':15,'process':'#p-121','machine':['#m-1','#m-2','#m-3'],'time':[18,18,18]},
+            {'order':'#o-1','workpiece':'#w-2','number':15,'process':'#p-122','machine':['#m-4','#m-5'],'time':[20,20]},
+            {'order':'#o-2','workpiece':'#w-4','number':10,'process':'#p-241','machine':['#m-1','#m-3'],'time':[29,29]},
+            {'order':'#o-2','workpiece':'#w-4','number':10,'process':'#p-242','machine':['#m-5','#m-6'],'time':[40,40]},
+            {'order':'#o-3','workpiece':'#w-3','number':10,'process':'#p-331','machine':['#m-1','#m-2'],'time':[34,34]},
+            {'order':'#o-3','workpiece':'#w-3','number':10,'process':'#p-332','machine':['#m-4'],'time':[40]},
+            {'order':'#o-3','workpiece':'#w-3','number':10,'process':'#p-333','machine':['#m-4','#m-5'],'time':[20,20]}]
+    wpstMatrix = np.array([[0, 0, 0, 0],
+                           [0, 0, 0, 0],
+                           [0, 0, 0, 0],
+                           [0, 0, 0, 0]])
+    workpieceIndex = ['#w-1','#w-2','#w-3','#w-4']
     # 注 ： 数字越小代表优先级越高
-    orderPriority = np.array([2, 1, 2])
+    orderPriority = np.array([1, 1, 1])
     orderIndex = ['#o-1', '#o-2', '#o-3']
     orderWorkpiece, orderList, workpieceList, processList, machineList = reshape_data(test)
     idxWorkpiece = np.array([workpieceIndex.index(x) for x in workpieceList], dtype=int)
     wpstMatrix = wpstMatrix[idxWorkpiece, :][:, idxWorkpiece]
     idxOrder = np.array([orderIndex.index(x) for x in orderList], dtype=int)
     orderPriority = orderPriority[idxOrder]
-    ga = GeneticAlgorithm(orderList, workpieceList, processList, machineList, wpstMatrix, orderPriority)
-    rowData, bestGene, fitnessList, averageFitness, orderCompleteTime = ga.exec(orderWorkpiece)
-    x = [i for i in range(len(fitnessList))]
-    plt.cla()
-    plt.figure(figsize=(12, 10))
-    plt.title('实验迭代曲线图', fontdict={'weight': 'normal', 'size': 16})
-    plt.plot(x, fitnessList)
-    # plt.plot(x, averageFitness)
-    plt.ylabel('进化代数', fontdict={'weight': 'normal', 'size': 16})
-    plt.xlabel('适应度值', fontdict={'weight': 'normal', 'size': 16})
-    plt.savefig('./img/curve.svg')
-    #plt.show()
-    plt.close()
-    plt.cla()
-    #print(rowData)
-    print(bestGene.fulfillTime)
-    print(orderCompleteTime)
-    plt.figure(figsize=(18, 10))
-    draw_gantt(rowData)
-    plt.savefig('./img/gantt.svg')
-    #plt.show()
-    plt.close()
+    p_list = [100,200,150,150,200]
+    t_list = [150,150,150,150,150]
+    pc_list = [0.8,0.8,0.85,0.8,0.85]
+    pm_list = [0.15,0.1,0.1,0.15,0.15]
+    route = './img/'
+    result = []
+    for i in tqdm(range(5), position=1):
+        for j in tqdm(range(1), position=0):
+            expName = str(i+1) + str(j+1)
+            begin = time.time()
+            ga = GeneticAlgorithm(orderList, workpieceList, processList, machineList, wpstMatrix, orderPriority,
+                                  populationNumber=p_list[i],times=t_list[i],crossProbability=pc_list[i],mutationProbability=pm_list[i])
+            rowData, bestGene, fitnessList, averageFitness, orderCompleteTime = ga.exec(orderWorkpiece)
+            end = time.time()
+            x = [i for i in range(len(fitnessList))]
+            plt.cla()
+            plt.figure(figsize=(12, 10))
+            plt.title('实验迭代曲线图', fontdict={'weight': 'normal', 'size': 30})
+            plt.plot(x, fitnessList, label='适应度值')
+            # plt.plot(x, averageFitness)
+            plt.ylabel('适应度值', fontdict={'weight': 'normal', 'size': 30})
+            plt.xlabel('进化代数', fontdict={'weight': 'normal', 'size': 30})
+            plt.tick_params(labelsize=28)
+            plt.legend(fontsize=28)
+            plt.savefig(route + expName + '_' + 'curve.svg')
+            #plt.show()
+            plt.close()
+            plt.cla()
+            #print(rowData)
+            #print(bestGene.fulfillTime)
+            #print(orderCompleteTime)
+            orderCompleteTime[expName] = str(bestGene.fulfillTime)
+            orderCompleteTime['time'] = str(round((end-begin), 3))
+            result.append(orderCompleteTime)
+            plt.figure(figsize=(18, 10))
+            draw_gantt(rowData)
+            plt.savefig(route + expName + '_' + 'gantt.svg')
+            #plt.show()
+            plt.close()
+    js = open("./simulationResults/simulationResult.json", "w")
+    json.dump(result, js)
+    js.close()

@@ -27,8 +27,8 @@ experimentName = ['4*5', '8*8', '10*10', '15*10']
 parameterP = [[50, 120, 120, 200]]
 parameterT = [[200, 1500, 1500, 5000]]
 parameterPc = [[0.8, 0.88, 0.85, 0.9]]
-parameterPm = [[0.2, 0.28, 0.25, 0.3]]
-route = './resultFig/'
+parameterPm = [[0.2, 0.28, 0.25, 0.35]]
+route = './newResult/'
 
 
 class Experiment():
@@ -51,22 +51,25 @@ class Experiment():
         orderWorkpiece, orderList, workpieceList, processList, machineList = reshape_data(data)
         idx = np.array([workpieceIndex.index(x) for x in workpieceList], dtype=int)
         wpstMatrix = wpstMatrix[idx, :][:, idx]
+        orderPriority = np.array([1])
         begin = time.time()
-        ga = GeneticAlgorithm(orderList, workpieceList, processList, machineList, wpstMatrix,
+        ga = GeneticAlgorithm(orderList, workpieceList, processList, machineList, wpstMatrix, orderPriority,
                               populationNumber=self.pp[index],
                               times=self.pt[index],
                               crossProbability=self.pc[index],
                               mutationProbability=self.pm[index])
-        rowData, bestGene, fitnessList, averageFitness = ga.exec(orderWorkpiece)
+        rowData, bestGene, fitnessList, averageFitness, orderCompleteTime= ga.exec(orderWorkpiece)
         end = time.time()
         x = [i for i in range(len(fitnessList))]
         plt.cla()
         plt.figure(figsize=(12, 10))
-        plt.title(expName + '实验迭代曲线图', fontdict={'weight': 'normal', 'size': 16})
-        plt.plot(x, fitnessList)
-        plt.plot(x, averageFitness)
-        plt.ylabel('进化代数', fontdict={'weight': 'normal', 'size': 16})
-        plt.xlabel('适应度值', fontdict={'weight': 'normal', 'size': 16})
+        plt.title(expName + '实验迭代曲线图', fontdict={'weight': 'normal', 'size': 30})
+        plt.plot(x, fitnessList, label='适应度值')
+        plt.plot(x, averageFitness, label='平均适应度值')
+        plt.ylabel('适应度值', fontdict={'weight': 'normal', 'size': 30})
+        plt.xlabel('进化代数', fontdict={'weight': 'normal', 'size': 30})
+        plt.tick_params(labelsize=28)
+        plt.legend(fontsize=28)
         plt.savefig(route + experimentNum + name + 'curve.svg')
         plt.close()
         plt.cla()
@@ -114,6 +117,6 @@ if __name__ == '__main__':
     # with Pool() as pool:
     #     returns = list(tqdm(pool.imap(wrapper(), experiments), total=len(experiments)))
     # # print(returns)
-    # js = open("experimentResult.json", "w")
+    # js = open("./1510results/experimentResult.json", "w")
     # json.dump(returns, js)
     # js.close()

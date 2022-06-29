@@ -33,10 +33,11 @@ def draw_gantt(result):
         # process_name = result[i]['process']
         # process_time = process_name + ' 时间 ' + str(width)
         plt.barh(machine_id, width, left=start_time, facecolor=color, edgecolor='black', label=workpiece_name)
-        text = order_name + '-' + workpiece_name + ':' + str(end_time)
-        plt.text(start_time, machine_id, text, fontdict={'weight':'normal','size': 10}, color='black')
-    plt.title('调度甘特图', fontdict={'weight':'normal','size': 18})
+        text = order_name + '-' + workpiece_name
+        plt.text(start_time, machine_id, text, fontdict={'weight':'normal','size': 22}, color='black')
+    plt.title('调度甘特图', fontdict={'weight':'normal','size': 24})
     plt.yticks(range(len(machine)), machine)
+    plt.tick_params(labelsize=22)
     handles, labels = plt.gca().get_legend_handles_labels()
     handle_list, label_list = [], []
     for handle, label in zip(handles, labels):
@@ -44,6 +45,6 @@ def draw_gantt(result):
             handle_list.append(handle)
             label_list.append(label)
     plt.legend(handle_list, label_list)
-    plt.ylabel('机器编号', fontdict={'weight':'normal','size': 18})
-    plt.xlabel('时间', fontdict={'weight':'normal','size': 18})
+    plt.ylabel('机器编号', fontdict={'weight':'normal','size': 24})
+    plt.xlabel('时间', fontdict={'weight':'normal','size': 24})
     #plt.show()
